@@ -43,6 +43,7 @@ function smsblast_admin_settings() {
  * Display a list of installed modules with the option to reinstall them.
  */
 function smsblast_sendform($form_state) {
+  dd('smsblast_sendform()');
   $output = '';
 
   $all_views = views_get_all_views(); 
@@ -81,13 +82,18 @@ function smsblast_sendform($form_state) {
     '#type' => 'submit',
   );
   if (empty($form_state['post'])) {
-    drupal_set_message(t('Warning - SMS spam is illegal.  Please ensure that your message complies with <a href="http://www.mmaglobal.com/bestpractices.pdf">MMA Best Practices</a>.'), 'warning'); # XXX fix to use l()
+    drupal_set_message(t('Warning - SMS spam is illegal.  Please ensure that your message complies with ').l(t('MMA Best Practices'), 'http://www.mmaglobal.com/bestpractices.pdf', array()).'.', 'warning');
   }
   return $form;
 }
-
-
-
+ 
+###########
+function smsblast_sendform_validate($form, &$form_state) {
+  dd('smsblast_sendform_validate()');
+}
+function smsblast_sendform_confirm($form, &$form_state) {
+  dd('smsblast_sendform_confirm()');
+}
 
 /**
  * Process reinstall menu form submissions.
@@ -102,10 +108,18 @@ function smsblast_sendform_submit($form, &$form_state) {
   
   watchdog('smsblast', 'Sending SMS Blast to %smsviewname: %smsmsg', array( '%smsviewname' =>  $view->name, '%smsmsg' => $themessage ));
   foreach ($view->result as $thenode) {
+    if (!isset($thenode->$cckfieldname)) {
+      watchdog('smsblast', 'Skipping SMS to %smsnum - missing SMS number field %cckfieldname', array( '%smsnum' => $thesmsnumber, '%cckfieldname' => $cckfieldname ));
+      continue;
+    }
     $thesmsnumber = $thenode->$cckfieldname;
 
     # validate and format the SMS number
     $thesmsnumber = smsblast_validate_phone($thesmsnumber);
+    if ($thesmsnumber == 0) {
+      watchdog('smsblast', 'Skipping SMS to %smsnum - bad SMS number in field %cckfieldname', array( '%smsnum' => $thesmsnumber, '%cckfieldname' => $cckfieldname ));
+      continue;
+    }
 
     # actually send the SMS
     $options = array();
@@ -116,9 +130,15 @@ function smsblast_sendform_submit($form, &$form_state) {
  drupal_set_message(t('Finished SMS Blast to %smsnodeqname', array( '%smsnodeqname' =>  $view->name)), 'warning'); 
 }
 
-function smsblast_validate_phone($phone) {
-  # XXX finish this!
-  $phone = '1'.$phone;
+function smsblast_validate_phone($phone_raw) {
+  $phone = 0;
+  # phone numbers missing 1 prefix
+  if (preg_match('/^\d{10}$/', $phone_raw, $matches)) {
+    $phone = '1'.$matches[0];
+  # phone numbers with the 1 prefix
+  } else if (preg_match('/^1\d{10}$/', $phone_raw, $matches)) {
+    $phone = $matches[1];
+  }
   return $phone;
 }
 
