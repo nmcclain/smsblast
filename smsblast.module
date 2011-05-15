@@ -78,46 +78,56 @@ function smsblast_sendform($form_state) {
 
   $cck_fields = array_keys(content_fields());
 
-  if (empty($form_state['post'])) {
+  if (empty($form_state['values'])) {
+    dd('smsblast_sendform(): values empty');
+
+    $form['smsblast_view'] = array(
+      '#type' => 'select',
+      '#title' => t('Select a View'),
+      '#default_value' => variable_get('smsblast_default_view', ''),
+      '#description' => t('SMS Blast will go to all nodes in this View.'),
+      '#options' => $views,
+    ); 
+    $form['smsblast_cckfield'] = array(
+      '#type' => 'select',
+      '#title' => t('Select a CCK field'),
+      '#default_value' => variable_get('smsblast_default_cckfield', ''),
+      '#description' => t('Pick the CCK field that contains the SMS number you want to send to.  CAUTION: this field should exist for all nodes in your View!'),
+      '#options' => array_combine($cck_fields,$cck_fields),
+    ); 
+    $form['smsblast_message'] = array(
+      '#type' => 'textfield',
+      '#title' => t('SMS message'),
+      '#default_value' => t('Put your message here'),
+      '#description' => t('This message will be sent in the SMS Blast.'),
+    ); 
+    $form['submit'] = array(
+      '#value' => t('Preview SMS Blast'),
+      '#type' => 'submit',
+    );
+  } else { # confirmation page
+    dd('smsblast_sendform(): values NOT empty - confirmation page');
+    # dd( $form_state);
+    $form['submit'] = array(
+      '#value' => t('Send SMS Blast'),
+      '#type' => 'submit',
+    );
+    $form['process'] = array('#type' => 'hidden', '#value' => 'true');
+
     drupal_set_message(t('Warning - SMS spam is illegal.  Please ensure that your message complies with ').l(t('MMA Best Practices'), 'http://www.mmaglobal.com/bestpractices.pdf', array()).'.', 'warning');
   }
-
-  $form['smsblast_view'] = array(
-    '#type' => 'select',
-    '#title' => t('Select a View'),
-    '#default_value' => variable_get('smsblast_default_view', ''),
-    '#description' => t('SMS Blast will go to all nodes in this View.'),
-    '#options' => $views,
-  ); 
-  $form['smsblast_cckfield'] = array(
-    '#type' => 'select',
-    '#title' => t('Select a CCK field'),
-    '#default_value' => variable_get('smsblast_default_cckfield', ''),
-    '#description' => t('Pick the CCK field that contains the SMS number you want to send to.  CAUTION: this field should exist for all nodes in your View!'),
-    '#options' => array_combine($cck_fields,$cck_fields),
-  ); 
-  $form['smsblast_message'] = array(
-    '#type' => 'textfield',
-    '#title' => t('SMS message'),
-    '#default_value' => t('Put your message here'),
-    '#description' => t('This message will be sent in the SMS Blast.'),
-  ); 
-  $form['list'] = array(
-    '#type' => 'checkboxes',
-    '#options' => $options,
-    '#description' => t('Uninstall and then install the selected modules. <code>hook_uninstall()</code> and <code>hook_install()</code> will be executed and the schema version number will be set to the most recent update number. You may have to manually clear out any existing tables first if the module doesn\'t implement <code>hook_uninstall()</code>.'),
-  );
-  $form['submit'] = array(
-    '#value' => t('Send SMS Blast'),
-    '#type' => 'submit',
-  );
   return $form;
 }
  
 ###########
 function smsblast_sendform_validate($form, &$form_state) {
   dd('smsblast_sendform_validate()');
+
+  if (isset($form_state['storage']['page2'])) {
+    return;
+  }
 }
+
 function smsblast_sendform_confirm($form, &$form_state) {
   dd('smsblast_sendform_confirm()');
 }
@@ -126,36 +136,55 @@ function smsblast_sendform_confirm($form, &$form_state) {
  * Process reinstall menu form submissions.
  */
 function smsblast_sendform_submit($form, &$form_state) {
+  dd('smsblast_sendform_submit()');
+ # dd($form_state);
 
-  $cckfieldname = 'node_data_'.$form_state['values']['smsblast_cckfield'].'_'.$form_state['values']['smsblast_cckfield'].'_value';
+  if (isset($form_state['values']['process'])) {
+    dd('smsblast_sendform_submit(): process');
 
-  $themessage = $form_state['values']['smsblast_message'] ;
-  $view = views_get_view($form_state['values']['smsblast_view']);
-  $view->execute();
-  
-  watchdog('smsblast', 'Sending SMS Blast to %smsviewname: %smsmsg', array( '%smsviewname' =>  $view->name, '%smsmsg' => $themessage ));
-  foreach ($view->result as $thenode) {
+    $cckfieldname = 'node_data_'.$form_state['storage']['smsform_values']['smsblast_cckfield'].'_'.$form_state['storage']['smsform_values']['smsblast_cckfield'].'_value';
 
-    if (!isset($thenode->$cckfieldname)) {
-      watchdog('smsblast', 'Skipping SMS to %smsnum - missing SMS number field %cckfieldname', array( '%smsnum' => $thesmsnumber, '%cckfieldname' => $cckfieldname ));
-      continue;
+    $themessage = $form_state['storage']['smsform_values']['smsblast_message'] ;
+    $view = views_get_view($form_state['storage']['smsform_values']['smsblast_view']);
+    $view->execute();
+    
+    watchdog('smsblast', 'Sending SMS Blast to %smsviewname: %smsmsg', array( '%smsviewname' =>  $view->name, '%smsmsg' => $themessage ));
+    foreach ($view->result as $thenode) {
+
+      if (!isset($thenode->$cckfieldname)) {
+        watchdog('smsblast', 'Skipping SMS to %smsnum - missing SMS number field %cckfieldname', array( '%smsnum' => $thesmsnumber, '%cckfieldname' => $cckfieldname ));
+        continue;
+      }
+      $thesmsnumber = $thenode->$cckfieldname;
+
+      # validate and format the SMS number
+      $thesmsnumber = smsblast_validate_phone($thesmsnumber);
+      if (! $thesmsnumber) {
+        watchdog('smsblast', 'Skipping SMS to %smsnum - bad SMS number in field %cckfieldname', array( '%smsnum' => $thesmsnumber, '%cckfieldname' => $cckfieldname ));
+        continue;
+      }
+
+      # actually send the SMS
+      $options = array();
+      sms_send($thesmsnumber, $themessage, $options);
+      watchdog('smsblast', 'Sent SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage ));
     }
-    $thesmsnumber = $thenode->$cckfieldname;
+    unset($form_state['storage']);
+    watchdog('smsblast', 'Finished SMS Blast to %smsnodeqname', array( '%smsnodeqname' =>  $view->name, '%smsmsg' => $form_state['storage']['smsform_values']['smsblast_message'] ));
+    drupal_set_message(t('Finished SMS Blast to %smsnodeqname', array( '%smsnodeqname' =>  $view->name)), 'warning'); 
+    return true;
+  } else { 
+    dd('smsblast_sendform_submit(): NO process');
 
-    # validate and format the SMS number
-    $thesmsnumber = smsblast_validate_phone($thesmsnumber);
-    if (! $thesmsnumber) {
-      watchdog('smsblast', 'Skipping SMS to %smsnum - bad SMS number in field %cckfieldname', array( '%smsnum' => $thesmsnumber, '%cckfieldname' => $cckfieldname ));
-      continue;
-    }
+    // This is vital so the values are there
+    $form_state['rebuild'] = TRUE;
 
-    # actually send the SMS
-    $options = array();
-    sms_send($thesmsnumber, $themessage, $options);
-    watchdog('smsblast', 'Sent SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage ));
-  }
-  watchdog('smsblast', 'Finished SMS Blast to %smsnodeqname', array( '%smsnodeqname' =>  $view->name, '%smsmsg' => $form_state['values']['smsblast_message'] ));
- drupal_set_message(t('Finished SMS Blast to %smsnodeqname', array( '%smsnodeqname' =>  $view->name)), 'warning'); 
+    $form_state['storage']['smsform_values'] = $form_state['values'];
+    $form_state['storage']['page2'] = TRUE;
+    return $form;
+  } 
+
+
 }
 
 function smsblast_validate_phone($phone_raw) {
