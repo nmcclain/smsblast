@@ -31,7 +31,6 @@ function smsblast_menu() {
   return $items;
 }
 
-
 /**
  * Module settings form. */
 
@@ -67,20 +66,14 @@ function smsblast_admin_settings() {
  * Display a list of installed modules with the option to reinstall them.
  */
 function smsblast_sendform($form_state) {
-  dd('smsblast_sendform()');
-  $output = '';
-
-  $all_views = views_get_all_views(); 
-  $views = array();
-  foreach ($all_views as $view) {
-      $views[ $view->name ] = $view->name;
-  }
-
-  $cck_fields = array_keys(content_fields());
-
   if (empty($form_state['values'])) {
-    dd('smsblast_sendform(): values empty');
+    $all_views = views_get_all_views(); 
+    $views = array();
+    foreach ($all_views as $view) {
+        $views[ $view->name ] = $view->name;
+    }
 
+    $cck_fields = array_keys(content_fields());
     $form['smsblast_view'] = array(
       '#type' => 'select',
       '#title' => t('Select a View'),
@@ -106,13 +99,13 @@ function smsblast_sendform($form_state) {
       '#type' => 'submit',
     );
   } else { # confirmation page
-    dd('smsblast_sendform(): values NOT empty - confirmation page');
-    # dd( $form_state);
+
     $form['submit'] = array(
+      '#prefix' => t('<p>The following message will be SMS Blasted to %smsnumcount numbers:<br><b>%smsmsg</b><br>Please double-check your message text and then click the button below to send it.</p><br>', array('%smsnumcount' =>  $form_state['storage']['smsnumcount'], '%smsmsg' => $form_state['values']['smsblast_message'])),
       '#value' => t('Send SMS Blast'),
       '#type' => 'submit',
     );
-    $form['process'] = array('#type' => 'hidden', '#value' => 'true');
+    $form['send_confirmed'] = array('#type' => 'hidden', '#value' => 'true');
 
     drupal_set_message(t('Warning - SMS spam is illegal.  Please ensure that your message complies with ').l(t('MMA Best Practices'), 'http://www.mmaglobal.com/bestpractices.pdf', array()).'.', 'warning');
   }
@@ -121,27 +114,34 @@ function smsblast_sendform($form_state) {
  
 ###########
 function smsblast_sendform_validate($form, &$form_state) {
-  dd('smsblast_sendform_validate()');
-
-  if (isset($form_state['storage']['page2'])) {
-    return;
-  }
-}
-
-function smsblast_sendform_confirm($form, &$form_state) {
-  dd('smsblast_sendform_confirm()');
 }
 
 /**
  * Process reinstall menu form submissions.
  */
 function smsblast_sendform_submit($form, &$form_state) {
-  dd('smsblast_sendform_submit()');
- # dd($form_state);
+  if (!isset($form_state['values']['send_confirmed'])) { # submitted for preview/validation
+    $view = views_get_view($form_state['values']['smsblast_view']);
+    $view->execute();
+    $cckfieldname = 'node_data_'.$form_state['values']['smsblast_cckfield'].'_'.$form_state['values']['smsblast_cckfield'].'_value';
+    $cckerror = 0;
+    foreach ($view->result as $thenode) { # validate CCK field is present in each node in the view
+      if (!isset($thenode->$cckfieldname)) {
+        $cckerror = 1;
+        break;
+      }
+    }
+    if ($cckerror) {
+      drupal_set_message(t('Error - the CCK field you selected %smsfieldname is not present in the nodes in the view %smsview.', array( '%smsfieldname' => $form_state['values']['smsblast_cckfield'], '%smsview' => $form_state['values']['smsblast_view'])), 'error');
+      unset($form_state['values']);
+      return $form;
+    }
+    $form_state['rebuild'] = TRUE; // This is vital so the values are there
 
-  if (isset($form_state['values']['process'])) {
-    dd('smsblast_sendform_submit(): process');
-
+    $form_state['storage']['smsform_values'] = $form_state['values'];
+    $form_state['storage']['smsnumcount'] = count($view->result);
+    return $form;
+  } else {   # submitted/confirmed for sending
     $cckfieldname = 'node_data_'.$form_state['storage']['smsform_values']['smsblast_cckfield'].'_'.$form_state['storage']['smsform_values']['smsblast_cckfield'].'_value';
 
     $themessage = $form_state['storage']['smsform_values']['smsblast_message'] ;
@@ -166,25 +166,15 @@ function smsblast_sendform_submit($form, &$form_state) {
 
       # actually send the SMS
       $options = array();
-      sms_send($thesmsnumber, $themessage, $options);
+      $smsresult = sms_send($thesmsnumber, $themessage, $options);
+      dd($smsresult);
       watchdog('smsblast', 'Sent SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage ));
     }
     unset($form_state['storage']);
     watchdog('smsblast', 'Finished SMS Blast to %smsnodeqname', array( '%smsnodeqname' =>  $view->name, '%smsmsg' => $form_state['storage']['smsform_values']['smsblast_message'] ));
     drupal_set_message(t('Finished SMS Blast to %smsnodeqname', array( '%smsnodeqname' =>  $view->name)), 'warning'); 
     return true;
-  } else { 
-    dd('smsblast_sendform_submit(): NO process');
-
-    // This is vital so the values are there
-    $form_state['rebuild'] = TRUE;
-
-    $form_state['storage']['smsform_values'] = $form_state['values'];
-    $form_state['storage']['page2'] = TRUE;
-    return $form;
   } 
-
-
 }
 
 function smsblast_validate_phone($phone_raw) {
