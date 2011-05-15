@@ -1,0 +1,48 @@
+<?php
+
+/**
+ * Implementation of hook_schema().
+ */
+function smsblast_schema() {
+  $schema['smsblast_history'] = array(
+    'description' => 'SMS Blast historic log.',
+    'fields' => array(
+      'blastid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '10'),
+      'message' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'view_name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'field_name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'time' => array('type' => 'float', 'not null' => FALSE)),
+    'primary key' => array('blastid'),
+  );
+  $schema['smsblast_history_numbers'] = array(
+    'description' => 'SMS Blast historic log of recipient SMS numbers.',
+    'fields' => array(
+      'smsid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '10'),
+      'blastid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'nid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
+      'smsnumber' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
+      'smsstatus' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+    'primary key' => array('smsid'),
+  );
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function smsblast_install() {
+  if (drupal_install_schema('smsblast')) {
+    drupal_set_message(t('SMS Blast was successfully installed.'));
+  }
+  else {
+    drupal_set_message(t('The installation of SMS Blast was not successful.'), 'error');
+  }
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function smsblast_uninstall() {
+  drupal_uninstall_schema('smsblast');
+}
+
