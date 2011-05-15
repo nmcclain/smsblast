@@ -14,15 +14,22 @@ function smsblast_menu() {
   $items = array();
   $items['admin/smsframework/smsblast'] = array(
     'title' => 'SMS Blast',
-    'description' => 'Sent bulk SMS Blasts to a view containing nodes with a SMS number in a CCK field.',
+    'description' => 'Send bulk SMS Blasts to a view containing nodes with a SMS number in a CCK field.',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('smsblast_sendform'),
     'access arguments' => array('use SMS Blast'),
     'type' => MENU_NORMAL_ITEM,
   );
+  $items['admin/smsframework/smsblast/history'] = array(
+    'title' => 'SMS Blast History',
+    'description' => 'View log of past SMS blasts.',
+    'page callback' => 'smsblast_history',
+    'access arguments' => array('use SMS Blast'),
+    'type' => MENU_NORMAL_ITEM,
+  );
   $items['admin/smsframework/smsblast/settings'] = array(
     'title' => 'SMS Blast Settings',
-    'description' => 'Sent bulk SMS Blasts to a view containing nodes with a SMS number in a CCK field.',
+    'description' => 'SMS Blast configuration and defaults.',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('smsblast_admin_settings'),
     'access arguments' => array('admin SMS Blast'),
@@ -33,7 +40,6 @@ function smsblast_menu() {
 
 /**
  * Module settings form. */
-
 function smsblast_admin_settings() { 
   $all_views = views_get_all_views(); 
   $views = array();
@@ -62,6 +68,13 @@ function smsblast_admin_settings() {
   return system_settings_form($form);
 }
 
+function smsblast_history() { 
+  # XXX
+  $output = '';
+  $output .= "hey hey!";
+  return $output;
+}
+
 /**
  * Display a list of installed modules with the option to reinstall them.
  */
@@ -72,7 +85,6 @@ function smsblast_sendform($form_state) {
     foreach ($all_views as $view) {
         $views[ $view->name ] = $view->name;
     }
-
     $cck_fields = array_keys(content_fields());
     $form['smsblast_view'] = array(
       '#type' => 'select',
@@ -101,13 +113,13 @@ function smsblast_sendform($form_state) {
   } else { # confirmation page
 
     $form['submit'] = array(
-      '#prefix' => t('<p>The following message will be SMS Blasted to %smsnumcount numbers:<br><b>%smsmsg</b><br>Please double-check your message text and then click the button below to send it.</p><br>', array('%smsnumcount' =>  $form_state['storage']['smsnumcount'], '%smsmsg' => $form_state['values']['smsblast_message'])),
+      '#prefix' => t('<p>The following message will be SMS Blasted to %smsnumcount numbers:<br><b>%smsmsg</b><br>Warning - SMS spam is illegal.  Please ensure that your message complies with ', array('%smsnumcount' =>  $form_state['storage']['smsnumcount'], '%smsmsg' => $form_state['values']['smsblast_message'])).l(t('MMA Best Practices'), 'http://www.mmaglobal.com/bestpractices.pdf').'.</p><br>',
       '#value' => t('Send SMS Blast'),
       '#type' => 'submit',
     );
     $form['send_confirmed'] = array('#type' => 'hidden', '#value' => 'true');
 
-    drupal_set_message(t('Warning - SMS spam is illegal.  Please ensure that your message complies with ').l(t('MMA Best Practices'), 'http://www.mmaglobal.com/bestpractices.pdf', array()).'.', 'warning');
+    drupal_set_message(t('Please double-check your message text and then click the button below to send it.'), 'warning');
   }
   return $form;
 }
@@ -165,12 +177,13 @@ function smsblast_sendform_submit($form, &$form_state) {
       }
 
       # actually send the SMS
-      $options = array();
-      $smsresult = sms_send($thesmsnumber, $themessage, $options);
-      dd($smsresult);
-      watchdog('smsblast', 'Sent SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage ));
+      if ( sms_send($thesmsnumber, $themessage)) {
+        watchdog('smsblast', 'Sent SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage ));
+      } else {
+        watchdog('smsblast', 'Error sending SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage ));
+      }
     }
-    unset($form_state['storage']);
+    unset($form_state['storage']); # send user back to the start
     watchdog('smsblast', 'Finished SMS Blast to %smsnodeqname', array( '%smsnodeqname' =>  $view->name, '%smsmsg' => $form_state['storage']['smsform_values']['smsblast_message'] ));
     drupal_set_message(t('Finished SMS Blast to %smsnodeqname', array( '%smsnodeqname' =>  $view->name)), 'warning'); 
     return true;
