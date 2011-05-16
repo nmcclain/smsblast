@@ -160,11 +160,11 @@ function smsblast_sendform_submit($form, &$form_state) {
     $view = views_get_view($form_state['storage']['smsform_values']['smsblast_view']);
     $view->execute();
     
-    watchdog('smsblast', 'Sending SMS Blast to %smsviewname: %smsmsg', array( '%smsviewname' =>  $view->name, '%smsmsg' => $themessage ));
+    $blastid = smsblast_log_blast( $themessage, $view->name, $form_state['storage']['smsform_values']['smsblast_cckfield']);
     foreach ($view->result as $thenode) {
 
       if (!isset($thenode->$cckfieldname)) {
-        watchdog('smsblast', 'Skipping SMS to %smsnum - missing SMS number field %cckfieldname', array( '%smsnum' => $thesmsnumber, '%cckfieldname' => $cckfieldname ));
+        smsblast_log_blastsms( $blastid, $thesmsnumber, $thenode->nid, t('Skipping SMS to %smsnum - missing SMS number field %cckfieldname', array( '%smsnum' => $thesmsnumber, '%cckfieldname' => $cckfieldname )));
         continue;
       }
       $thesmsnumber = $thenode->$cckfieldname;
@@ -172,15 +172,15 @@ function smsblast_sendform_submit($form, &$form_state) {
       # validate and format the SMS number
       $thesmsnumber = smsblast_validate_phone($thesmsnumber);
       if (! $thesmsnumber) {
-        watchdog('smsblast', 'Skipping SMS to %smsnum - bad SMS number in field %cckfieldname', array( '%smsnum' => $thesmsnumber, '%cckfieldname' => $cckfieldname ));
+        smsblast_log_blastsms( $blastid, $thesmsnumber, $thenode->nid, t('Skipping SMS to %smsnum - bad SMS number in field %cckfieldname', array( '%smsnum' => $thesmsnumber, '%cckfieldname' => $cckfieldname )));
         continue;
       }
 
       # actually send the SMS
       if ( sms_send($thesmsnumber, $themessage)) {
-        watchdog('smsblast', 'Sent SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage ));
+        smsblast_log_blastsms( $blastid, $thesmsnumber, $thenode->nid, t('Sent SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage )));
       } else {
-        watchdog('smsblast', 'Error sending SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage ));
+        smsblast_log_blastsms( $blastid, $thesmsnumber, $thenode->nid, t('Error sending SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage )));
       }
     }
     unset($form_state['storage']); # send user back to the start
@@ -188,6 +188,32 @@ function smsblast_sendform_submit($form, &$form_state) {
     drupal_set_message(t('Finished SMS Blast to %smsnodeqname', array( '%smsnodeqname' =>  $view->name)), 'warning'); 
     return true;
   } 
+}
+
+function smsblast_log_blast($themessage, $theview, $thefield) {
+  $table = 'smsblast_history';
+  $data =  array(
+      'message' => $themessage,
+      'view_name' => $theview,
+      'field_name' => $thefield,
+      'time' => time(),
+    );
+  drupal_write_record($table, $data);
+  watchdog('smsblast', 'Sending SMS Blast to %smsviewname: %smsmsg', array( '%smsviewname' =>  $theview, '%smsmsg' => $themessage ));
+  return(db_last_insert_id($table, 'blastid'));
+}
+
+function smsblast_log_blastsms( $blastid, $thesmsnumber, $thenodeid, $thestatus) {
+  $table = 'smsblast_history_sms';
+  $data =  array(
+      'blastid' => $blastid,
+      'smsnumber' => $thesmsnumber,
+      'nid' => $thenodeid,
+      'smsstatus' => $thestatus,
+  );
+  drupal_write_record($table, $data);
+  watchdog('smsblast', $thestatus);
+  return true;
 }
 
 function smsblast_validate_phone($phone_raw) {

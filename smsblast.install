@@ -11,17 +11,17 @@ function smsblast_schema() {
       'message' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
       'view_name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
       'field_name' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
-      'time' => array('type' => 'float', 'not null' => FALSE)),
+      'time' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'size' => 'big')),
     'primary key' => array('blastid'),
   );
-  $schema['smsblast_history_numbers'] = array(
+  $schema['smsblast_history_sms'] = array(
     'description' => 'SMS Blast historic log of recipient SMS numbers.',
     'fields' => array(
       'smsid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '10'),
       'blastid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
       'nid' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '10'),
       'smsnumber' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => ''),
-      'smsstatus' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'disp-width' => '10')),
+      'smsstatus' => array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => '')),
     'primary key' => array('smsid'),
   );
   return $schema;
