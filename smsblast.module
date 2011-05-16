@@ -103,6 +103,7 @@ function smsblast_history_detail($blastid) {
     $output .= '<h1>SMS Blast details:</h1>';
     $output .= 'Time: '.date('Y-m-d H:m:s', $row['time'])."<br>";
     $output .= 'Message: '.check_plain($row['message'])."<br>";
+    $output .= 'Sent to View: '.l($row['view_name'], 'admin/build/views/edit/'.check_plain($row['view_name']))."<br>";
   } else {
     return false;
   }
