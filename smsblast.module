@@ -68,10 +68,20 @@ function smsblast_admin_settings() {
   return system_settings_form($form);
 }
 
-function smsblast_history() { 
-  # XXX
+function smsblast_history() {
+  $table = 'smsblast_history';
   $output = '';
-  $output .= "hey hey!";
+  $rows_per_page = 20;
+  $rows=array();
+  $header = array('Send Time', 'View Name', 'Message', 'Field Name');
+  $select = "SELECT time, view_name, message, field_name FROM {$table} ORDER BY time DESC";
+  $result = pager_query($select, $rows_per_page);
+  while ($row = db_fetch_array($result)) {
+    $row['time'] = date('Y-m-d H:m:s', $row['time']);
+    $rows[] = $row;
+  }
+  $output .= theme('table', $header, $rows);
+  $output .= theme('pager', $rows_per_page);
   return $output;
 }
 
@@ -105,6 +115,8 @@ function smsblast_sendform($form_state) {
       '#title' => t('SMS message'),
       '#default_value' => t('Put your message here'),
       '#description' => t('This message will be sent in the SMS Blast.'),
+      '#size' => '140',
+      '#maxlength' => '140',
     ); 
     $form['submit'] = array(
       '#value' => t('Preview SMS Blast'),
@@ -133,11 +145,19 @@ function smsblast_sendform_validate($form, &$form_state) {
  */
 function smsblast_sendform_submit($form, &$form_state) {
   if (!isset($form_state['values']['send_confirmed'])) { # submitted for preview/validation
+    # validate message isn't too long
+    if (strlen($form_state['values']['smsblast_message']) > 140) {
+      drupal_set_message(t('Error - SMS message cannot be longer than 140 characters.'), 'error');
+      unset($form_state['values']);
+      return $form;
+    }
+
+    # validate CCK field is present in each node in the view
     $view = views_get_view($form_state['values']['smsblast_view']);
     $view->execute();
     $cckfieldname = 'node_data_'.$form_state['values']['smsblast_cckfield'].'_'.$form_state['values']['smsblast_cckfield'].'_value';
     $cckerror = 0;
-    foreach ($view->result as $thenode) { # validate CCK field is present in each node in the view
+    foreach ($view->result as $thenode) {
       if (!isset($thenode->$cckfieldname)) {
         $cckerror = 1;
         break;
