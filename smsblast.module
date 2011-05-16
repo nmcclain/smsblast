@@ -27,6 +27,12 @@ function smsblast_menu() {
     'access arguments' => array('use SMS Blast'),
     'type' => MENU_NORMAL_ITEM,
   );
+  $items['admin/smsframework/smsblast/history/%'] = array(
+    'page callback' => 'smsblast_history_detail',
+    'page arguments' => array(4),
+    'access arguments' => array('use SMS Blast'),
+    'type' => MENU_CALLBACK,
+  );
   $items['admin/smsframework/smsblast/settings'] = array(
     'title' => 'SMS Blast Settings',
     'description' => 'SMS Blast configuration and defaults.',
@@ -74,10 +80,44 @@ function smsblast_history() {
   $rows_per_page = 20;
   $rows=array();
   $header = array('Send Time', 'View Name', 'Message', 'Field Name');
-  $select = "SELECT time, view_name, message, field_name FROM {$table} ORDER BY time DESC";
+  $select = "SELECT time, view_name, message, field_name, blastid FROM {$table} ORDER BY time DESC";
   $result = pager_query($select, $rows_per_page);
   while ($row = db_fetch_array($result)) {
+    array_walk($row, 'check_plain');
     $row['time'] = date('Y-m-d H:m:s', $row['time']);
+    $row['message'] = l($row['message'], 'admin/smsframework/smsblast/history/'.$row['blastid']);
+    unset($row['blastid']);
+    $rows[] = $row;
+  }
+  $output .= theme('table', $header, $rows);
+  $output .= theme('pager', $rows_per_page);
+  return $output;
+}
+
+function smsblast_history_detail($blastid) {
+  $output = '';
+  $table = 'smsblast_history';
+  $select = "SELECT time, view_name, message, field_name FROM {$table} WHERE blastid = ".$blastid." ORDER BY time DESC";
+  $result = db_query($select);
+  if ($row = db_fetch_array($result)) {
+    $output .= '<h1>SMS Blast details:</h1>';
+    $output .= 'Time: '.date('Y-m-d H:m:s', $row['time'])."<br>";
+    $output .= 'Message: '.check_plain($row['message'])."<br>";
+  } else {
+    return false;
+  }
+
+  $table = 'smsblast_history_sms';
+  $select = "SELECT smsid, nid, smsnumber, smsstatus FROM {$table} WHERE blastid = ".$blastid;
+  $rows_per_page = 20;
+  $rows=array();
+  $header = array('SMS Number', 'SMS Send Results');
+  $result = pager_query($select, $rows_per_page);
+  while ($row = db_fetch_array($result)) {
+    array_walk($row, 'check_plain');
+    $row['smsnumber'] = l($row['smsnumber'], 'node/'.$row['nid']);
+    unset($row['smsid']);
+    unset($row['nid']);
     $rows[] = $row;
   }
   $output .= theme('table', $header, $rows);
@@ -182,7 +222,6 @@ function smsblast_sendform_submit($form, &$form_state) {
     
     $blastid = smsblast_log_blast( $themessage, $view->name, $form_state['storage']['smsform_values']['smsblast_cckfield']);
     foreach ($view->result as $thenode) {
-
       if (!isset($thenode->$cckfieldname)) {
         smsblast_log_blastsms( $blastid, $thesmsnumber, $thenode->nid, t('Skipping SMS to %smsnum - missing SMS number field %cckfieldname', array( '%smsnum' => $thesmsnumber, '%cckfieldname' => $cckfieldname )));
         continue;
@@ -213,14 +252,15 @@ function smsblast_sendform_submit($form, &$form_state) {
 function smsblast_log_blast($themessage, $theview, $thefield) {
   $table = 'smsblast_history';
   $data =  array(
-      'message' => $themessage,
-      'view_name' => $theview,
-      'field_name' => $thefield,
-      'time' => time(),
-    );
+    'message' => $themessage,
+    'view_name' => $theview,
+    'field_name' => $thefield,
+    'time' => time(),
+  );
   drupal_write_record($table, $data);
+  $blastid = db_last_insert_id($table, 'blastid');
   watchdog('smsblast', 'Sending SMS Blast to %smsviewname: %smsmsg', array( '%smsviewname' =>  $theview, '%smsmsg' => $themessage ));
-  return(db_last_insert_id($table, 'blastid'));
+  return($blastid);
 }
 
 function smsblast_log_blastsms( $blastid, $thesmsnumber, $thenodeid, $thestatus) {
@@ -247,5 +287,4 @@ function smsblast_validate_phone($phone_raw) {
   }
   return $phone;
 }
-
 
