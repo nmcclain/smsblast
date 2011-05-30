@@ -1,4 +1,5 @@
 <?php
+// $Id$
 
 /**
  * Implementation of hook_menu().
@@ -13,16 +14,16 @@ function at_rally_auth_perm() {
 function smsblast_menu() {
   $items = array();
   $items['admin/smsframework/smsblast'] = array(
-    'title' => 'SMS Blast',
-    'description' => 'Send bulk SMS Blasts to a view containing nodes with a SMS number in a CCK field.',
+    'title' => t('SMS Blast'),
+    'description' => t('Send bulk SMS Blasts to a view containing nodes with a SMS number in a CCK field.'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('smsblast_sendform'),
     'access arguments' => array('use SMS Blast'),
     'type' => MENU_NORMAL_ITEM,
   );
   $items['admin/smsframework/smsblast/history'] = array(
-    'title' => 'SMS Blast History',
-    'description' => 'View log of past SMS blasts.',
+    'title' => t('SMS Blast History'),
+    'description' => t('View log of past SMS blasts.'),
     'page callback' => 'smsblast_history',
     'access arguments' => array('use SMS Blast'),
     'type' => MENU_NORMAL_ITEM,
@@ -34,8 +35,8 @@ function smsblast_menu() {
     'type' => MENU_CALLBACK,
   );
   $items['admin/smsframework/smsblast/settings'] = array(
-    'title' => 'SMS Blast Settings',
-    'description' => 'SMS Blast configuration and defaults.',
+    'title' => t('SMS Blast Settings'),
+    'description' => t('SMS Blast configuration and defaults.'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('smsblast_admin_settings'),
     'access arguments' => array('admin SMS Blast'),
@@ -68,7 +69,7 @@ function smsblast_admin_settings() {
     '#title' => t('Default View'),
     '#default_value' => variable_get('smsblast_default_cckfield', ''),
     '#description' => t('Default SMS Blast CCK Field'),
-    '#options' => array_combine($cck_fields,$cck_fields),
+    '#options' => array_combine($cck_fields, $cck_fields),
   );
 
   return system_settings_form($form);
@@ -79,13 +80,13 @@ function smsblast_history() {
   $output = '';
   $rows_per_page = 20;
   $rows=array();
-  $header = array('Send Time', 'View Name', 'Message', 'Field Name');
+  $header = array(t('Send Time'), t('View Name'), t('Message'), t('Field Name'));
   $select = "SELECT time, view_name, message, field_name, blastid FROM {$table} ORDER BY time DESC";
   $result = pager_query($select, $rows_per_page);
   while ($row = db_fetch_array($result)) {
     array_walk($row, 'check_plain');
     $row['time'] = date('Y-m-d H:m:s', $row['time']);
-    $row['message'] = l($row['message'], 'admin/smsframework/smsblast/history/'.$row['blastid']);
+    $row['message'] = l($row['message'], 'admin/smsframework/smsblast/history/'. $row['blastid']);
     unset($row['blastid']);
     $rows[] = $row;
   }
@@ -97,26 +98,26 @@ function smsblast_history() {
 function smsblast_history_detail($blastid) {
   $output = '';
   $table = 'smsblast_history';
-  $select = "SELECT time, view_name, message, field_name FROM {$table} WHERE blastid = ".$blastid." ORDER BY time DESC";
+  $select = "SELECT time, view_name, message, field_name FROM {$table} WHERE blastid = ". $blastid ." ORDER BY time DESC";
   $result = db_query($select);
   if ($row = db_fetch_array($result)) {
-    $output .= '<h1>SMS Blast details:</h1>';
-    $output .= 'Time: '.date('Y-m-d H:m:s', $row['time'])."<br>";
-    $output .= 'Message: '.check_plain($row['message'])."<br>";
-    $output .= 'Sent to View: '.l($row['view_name'], 'admin/build/views/edit/'.check_plain($row['view_name']))."<br>";
+    $output .= '<h1>'. t('SMS Blast details:') .'</h1>';
+    $output .= t('Time: ') . date('Y-m-d H:m:s', $row['time']) ."<br>";
+    $output .= t('Message: ') . check_plain($row['message']) ."<br>";
+    $output .= t('Sent to View: ') . l($row['view_name'], 'admin/build/views/edit/'. check_plain($row['view_name'])) ."<br>";
   } else {
-    return false;
+    return FALSE;
   }
 
   $table = 'smsblast_history_sms';
-  $select = "SELECT smsid, nid, smsnumber, smsstatus FROM {$table} WHERE blastid = ".$blastid;
+  $select = "SELECT smsid, nid, smsnumber, smsstatus FROM {$table} WHERE blastid = ". $blastid;
   $rows_per_page = 20;
   $rows=array();
-  $header = array('SMS Number', 'SMS Send Results');
+  $header = array(t('SMS Number'), t('SMS Send Results'));
   $result = pager_query($select, $rows_per_page);
   while ($row = db_fetch_array($result)) {
     array_walk($row, 'check_plain');
-    $row['smsnumber'] = l($row['smsnumber'], 'node/'.$row['nid']);
+    $row['smsnumber'] = l($row['smsnumber'], 'node/'. $row['nid']);
     unset($row['smsid']);
     unset($row['nid']);
     $rows[] = $row;
@@ -149,7 +150,7 @@ function smsblast_sendform($form_state) {
       '#title' => t('Select a CCK field'),
       '#default_value' => variable_get('smsblast_default_cckfield', ''),
       '#description' => t('Pick the CCK field that contains the SMS number you want to send to.  CAUTION: this field should exist for all nodes in your View!'),
-      '#options' => array_combine($cck_fields,$cck_fields),
+      '#options' => array_combine($cck_fields, $cck_fields),
     ); 
     $form['smsblast_message'] = array(
       '#type' => 'textfield',
@@ -166,7 +167,7 @@ function smsblast_sendform($form_state) {
   } else { # confirmation page
 
     $form['submit'] = array(
-      '#prefix' => t('<p>The following message will be SMS Blasted to %smsnumcount numbers:<br><b>%smsmsg</b><br>Warning - SMS spam is illegal.  Please ensure that your message complies with ', array('%smsnumcount' =>  $form_state['storage']['smsnumcount'], '%smsmsg' => $form_state['values']['smsblast_message'])).l(t('MMA Best Practices'), 'http://www.mmaglobal.com/bestpractices.pdf').'.</p><br>',
+      '#prefix' => t('<p>The following message will be SMS Blasted to %smsnumcount numbers:<br><b>%smsmsg</b><br>Warning - SMS spam is illegal.  Please ensure that your message complies with ', array('%smsnumcount' =>  $form_state['storage']['smsnumcount'], '%smsmsg' => $form_state['values']['smsblast_message'])) . l(t('MMA Best Practices'), 'http://www.mmaglobal.com/bestpractices.pdf') .'.</p><br>',
       '#value' => t('Send SMS Blast'),
       '#type' => 'submit',
     );
@@ -196,7 +197,7 @@ function smsblast_sendform_submit($form, &$form_state) {
     # validate CCK field is present in each node in the view
     $view = views_get_view($form_state['values']['smsblast_view']);
     $view->execute();
-    $cckfieldname = 'node_data_'.$form_state['values']['smsblast_cckfield'].'_'.$form_state['values']['smsblast_cckfield'].'_value';
+    $cckfieldname = 'node_data_'. $form_state['values']['smsblast_cckfield'] .'_'. $form_state['values']['smsblast_cckfield'] .'_value';
     $cckerror = 0;
     foreach ($view->result as $thenode) {
       if (!isset($thenode->$cckfieldname)) {
@@ -210,7 +211,6 @@ function smsblast_sendform_submit($form, &$form_state) {
       return $form;
     }
     $form_state['rebuild'] = TRUE; // This is vital so the values are there
-
     $form_state['storage']['smsform_values'] = $form_state['values'];
     $form_state['storage']['smsnumcount'] = count($view->result);
     return $form;
