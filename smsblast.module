@@ -28,22 +28,24 @@ function smsblast_menu() {
   );
   $items['admin/smsframework/smsblast/send'] = array(
     'title' => t('Send from form'),
-    'description' => t('Send bulk SMS Blasts to a view containing nodes with a SMS number in a CCK field.'),
+    'description' => t('Send bulk SMS Blast to a list of numbers you paste into a form'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('smsblast_sendform'),
     'access arguments' => array('use SMS Blast'),
     'weight' => 1,
     'type' => MENU_LOCAL_TASK,
   );
-  $items['admin/smsframework/smsblast/sendview'] = array(
-    'title' => t('Send from view'),
-    'description' => t('View log of past SMS blasts.'),
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('smsblast_sendview'),
-    'access arguments' => array('use SMS Blast'),
-    'weight' => 2,
-    'type' => MENU_LOCAL_TASK,
-  );
+  if (module_exists('views')) {
+    $items['admin/smsframework/smsblast/sendview'] = array(
+      'title' => t('Send from view'),
+      'description' => t('Send bulk SMS Blast to a view containing nodes with a SMS number in a CCK field.'),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('smsblast_sendview'),
+      'access arguments' => array('use SMS Blast'),
+      'weight' => 2,
+      'type' => MENU_LOCAL_TASK,
+    );
+  }
   $items['admin/smsframework/smsblast/history'] = array(
     'title' => t('History'),
     'description' => t('View log of past SMS blasts.'),
@@ -73,42 +75,52 @@ function smsblast_menu() {
 /**
  * Module settings form. */
 function smsblast_admin_settings() { 
-  $all_views = views_get_all_views(); 
-  $views = array();
-  foreach ($all_views as $view) {
-      $views[ $view->name ] = $view->name;
-  }
-  $cck_fields = array_keys(content_fields());
-
   $form = array();
-
   $form['help_text'] = array(
-    '#type' => 'markup',
-    '#markup' => t('XXX Use this form to send an SMS to a list of numbers stored in nodes returned by a view.'),
-  );
-  $form['smsblast_default_view'] = array(
-    '#type' => 'select',
-    '#title' => t('Default View'),
-    '#default_value' => variable_get('smsblast_default_view', ''),
-    '#description' => t('Default SMS Blast View'),
-    '#options' => $views,
-  );
-  $form['smsblast_default_cckfield'] = array(
-    '#type' => 'select',
-    '#title' => t('Default View'),
-    '#default_value' => variable_get('smsblast_default_cckfield', ''),
-    '#description' => t('Default SMS Blast CCK Field'),
-    '#options' => array_combine($cck_fields, $cck_fields),
+    '#type' => 'item',
+    '#value' => t('Use this form to configure SMS Blast settings and defaults.'),
   );
 
+  if (module_exists('views')) {
+    $all_views = views_get_all_views(); 
+    $views = array();
+    foreach ($all_views as $view) {
+        $views[ $view->name ] = $view->name;
+    }
+    $cck_fields = array_keys(content_fields());
+
+    $form['smsblast_fromview_defaults'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('"Send from View" defaults'),
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+    );
+    $form['smsblast_fromview_defaults']['smsblast_default_view'] = array(
+      '#type' => 'select',
+      '#title' => t('Default View'),
+      '#default_value' => variable_get('smsblast_default_view', ''),
+      '#description' => t('Default SMS Blast View'),
+      '#options' => $views,
+    );
+    $form['smsblast_fromview_defaults']['smsblast_default_cckfield'] = array(
+      '#type' => 'select',
+      '#title' => t('Default View'),
+      '#default_value' => variable_get('smsblast_default_cckfield', ''),
+      '#description' => t('Default SMS Blast CCK Field'),
+      '#options' => array_combine($cck_fields, $cck_fields),
+    );
+  } else {
+    drupal_set_message(t('The Views module is not installed, so you cannot use the "Send from View" feature. Don\'t worry, you can still use the "Send from form" feature. There is nothing to configure here unless Views is installed.'));
+  }
   return system_settings_form($form);
 }
 
 function smsblast_overview() {
   $output = '';
   $output .= t('XXX Here is some friendly help text and info about the SMS Blast module.');
-      #'#title' => 'XXX places you can go:',
-      #'#theme' => 'item_list',
+  if (!module_exists('views')) {
+    drupal_set_message(t('The Views module is not installed, so you cannot use the "Send from View" feature. Don\'t worry, you can still use the "Send from form" feature.<br>If you want to be able to send SMS Blasts to numbers that are stored in node CCK fields, you\'ll need to install and enable the Views module.'));
+  }
   return $output;
 }
 function smsblast_history() {
@@ -165,23 +177,34 @@ function smsblast_history_detail($blastid) {
 
 function smsblast_sendform($form_state) {
   $form = array();
-  $form['help_text'] = array(
-    '#type' => 'item',
-    '#title' => t('XXX Use this form to send an SMS to a list of numbers you paste below.'),
-    #'#value' => t('Help text'),
-  );
-  $form['smsblast_message'] = array(
-    '#type' => 'textfield',
-    '#title' => t('SMS message'),
-    '#default_value' => t('Put your message here'),
-    '#description' => t('This message will be sent in the SMS Blast.'),
-    '#size' => '140',
-    '#maxlength' => '140',
-  ); 
-  $form['submit'] = array(
-    '#value' => t('Preview SMS Blast'),
-    '#type' => 'submit',
-  );
+  if (empty($form_state['values'])) {
+    $form['help_text'] = array(
+      '#type' => 'item',
+      '#value' => t('Use this form to send an SMS to a list of numbers you paste into the field below.'),
+    );
+    $form['smsblast_message'] = array(
+      '#type' => 'textfield',
+      '#title' => t('SMS message'),
+      '#default_value' => t('Put your message here'),
+      '#description' => t('This message will be sent in the SMS Blast.'),
+      '#size' => '140',
+      '#maxlength' => '140',
+    ); 
+    $form['smsblast_numbers'] = array(
+      '#type' => 'textarea',
+      '#title' => t('Recipient SMS numbers'),
+      '#default_value' => '',
+      '#description' => t('SMS numbers should separated by commas or newlines, for example: 16075551212, 16075551213, ...').'<br>'.t('Currently, only US numbers are supported.'),
+      '#cols' => '40',
+      '#rows' => '4',
+    ); 
+    $form['submit'] = array(
+      '#value' => t('Preview SMS Blast'),
+      '#type' => 'submit',
+    );
+  } else {
+     drupal_set_message(t('XXX todo', 'error'));
+  }
 
   return $form;
 }
@@ -189,12 +212,14 @@ function smsblast_sendform($form_state) {
 /**
  */
 function smsblast_sendview($form_state) {
+  if (!module_exists('views')) {
+     drupal_set_message(t('The Views module is not installed, so you cannot use the "Send from View" feature.', 'error'));
+     return;
+  }
   if (empty($form_state['values'])) {
-    $form = array();
-
     $form['help_text'] = array(
-      '#type' => 'markup',
-      '#markup' => t('XXX Use this form to send an SMS to a list of numbers stored in nodes returned by a view.'),
+      '#type' => 'item',
+      '#value' => t('Use this form to send an SMS to a list of numbers stored in nodes returned by a view.'),
     );
 
     $all_views = views_get_all_views(); 
