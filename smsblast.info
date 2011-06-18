@@ -2,4 +2,5 @@ name = "SMSBlast"
 description = "Allows the SMS Framework to use twilio.com as a gateway."
 dependencies[] = sms
 core = 6.x
+project = "smsframework"
 
