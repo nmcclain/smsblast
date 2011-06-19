@@ -1,0 +1,6 @@
+name = "SMS Blast"
+description = "Drupal 6 module to send SMS Blasts to bulk lists of numbers."
+dependencies[] = sms
+core = 6.x
+project = "smsframework"
+

@@ -4,8 +4,8 @@
 /**
  * Implementation of hook_schema().
  */
-function smsblast_schema() {
-  $schema['smsblast_history'] = array(
+function sms_blast_schema() {
+  $schema['sms_blast_history'] = array(
     'description' => 'SMS Blast historic log.',
     'fields' => array(
       'blastid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '10'),
@@ -15,7 +15,7 @@ function smsblast_schema() {
       'time' => array('type' => 'int', 'not null' => TRUE, 'default' => 0, 'size' => 'big')),
     'primary key' => array('blastid'),
   );
-  $schema['smsblast_history_sms'] = array(
+  $schema['sms_blast_history_sms'] = array(
     'description' => 'SMS Blast historic log of recipient SMS numbers.',
     'fields' => array(
       'smsid' => array('type' => 'serial', 'not null' => TRUE, 'disp-width' => '10'),
@@ -31,8 +31,8 @@ function smsblast_schema() {
 /**
  * Implementation of hook_install().
  */
-function smsblast_install() {
-  if (drupal_install_schema('smsblast')) {
+function sms_blast_install() {
+  if (drupal_install_schema('sms_blast')) {
     drupal_set_message(t('SMS Blast was successfully installed.'));
   }
   else {
@@ -43,7 +43,7 @@ function smsblast_install() {
 /**
  * Implementation of hook_uninstall().
  */
-function smsblast_uninstall() {
-  drupal_uninstall_schema('smsblast');
+function sms_blast_uninstall() {
+  drupal_uninstall_schema('sms_blast');
 }
 
