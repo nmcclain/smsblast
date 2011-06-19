@@ -74,7 +74,7 @@ function smsblast_menu() {
 
 /**
  * Module settings form. */
-function smsblast_admin_settings() { 
+function smsblast_admin_settings() {
   $form = array();
   $form['help_text'] = array(
     '#type' => 'item',
@@ -82,7 +82,7 @@ function smsblast_admin_settings() {
   );
 
   if (module_exists('views')) {
-    $all_views = views_get_all_views(); 
+    $all_views = views_get_all_views();
     $views = array();
     foreach ($all_views as $view) {
         $views[ $view->name ] = $view->name;
@@ -109,7 +109,8 @@ function smsblast_admin_settings() {
       '#description' => t('Default SMS Blast CCK Field'),
       '#options' => array_combine($cck_fields, $cck_fields),
     );
-  } else {
+  }
+  else {
     drupal_set_message(t('The Views module is not installed, so you cannot use the "Send from View" feature. Don\'t worry, you can still use the "Send with form" feature. There is nothing to configure here unless Views is installed.'));
   }
   return system_settings_form($form);
@@ -119,9 +120,9 @@ function smsblast_overview() {
   $output = '';
   $output .= t('XXX needs work: right now it just prints README.txt');
   if (!module_exists('views')) {
-    drupal_set_message(t('The Views module is not installed, so you cannot use the "Send from View" feature. Don\'t worry, you can still use the "Send with form" feature.<br>If you want to be able to send SMS Blasts to numbers that are stored in node CCK fields, you\'ll need to install and enable the Views module.'));
+    drupal_set_message(t('The Views module is not installed, so you cannot use the "Send from View" feature. Don\'t worry, you can still use the "Send with form" feature.<br />If you want to be able to send SMS Blasts to numbers that are stored in node CCK fields, you\'ll need to install and enable the Views module.'));
   }
-  $output .= '<pre>'.`cat sites/all/modules/smsblast/README.txt`.'</pre>';
+  $output .= '<pre>' . `cat sites/all/modules/smsblast/README.txt` . '</pre>'; // XXX this has got to go - just temporary!!
   return $output;
 }
 function smsblast_history() {
@@ -151,10 +152,11 @@ function smsblast_history_detail($blastid) {
   $result = db_query($select);
   if ($row = db_fetch_array($result)) {
     $output .= '<h1>'. t('SMS Blast details:') .'</h1>';
-    $output .= t('Time: ') . date('Y-m-d H:m:s', $row['time']) ."<br>";
-    $output .= t('Message: ') . check_plain($row['message']) ."<br>";
-    $output .= t('Sent to View: ') . l($row['view_name'], 'admin/build/views/edit/'. check_plain($row['view_name'])) ."<br>";
-  } else {
+    $output .= t('Time: ') . date('Y-m-d H:m:s', $row['time']) ."<br />";
+    $output .= t('Message: ') . check_plain($row['message']) ."<br />";
+    $output .= t('Sent to View: ') . l($row['view_name'], 'admin/build/views/edit/'. check_plain($row['view_name'])) ."<br />";
+  }
+  else {
     return FALSE;
   }
 
@@ -190,23 +192,24 @@ function smsblast_sendform($form_state) {
       '#description' => t('This message will be sent in the SMS Blast.'),
       '#size' => '140',
       '#maxlength' => '140',
-    ); 
+    );
     $form['smsblast_numbers'] = array(
       '#type' => 'textarea',
       '#title' => t('Recipient SMS numbers'),
       '#default_value' => '',
-      '#description' => t('SMS numbers should separated by commas or newlines, for example: 6075551212, 6075551213, ...').'<br>'.t('Currently, only 10-digit US numbers are supported (no leading 1).'),
+      '#description' => t('SMS numbers should separated by commas or newlines, for example: 6075551212, 6075551213, ...') . '<br />' . t('Currently, only 10-digit US numbers are supported (no leading 1).'),
       '#cols' => '40',
       '#rows' => '4',
-    ); 
+    );
     $form['submit'] = array(
       '#value' => t('Preview SMS Blast'),
       '#type' => 'submit',
     );
-  } else { #sendform confirmation page
+  }
+  else { // sendform confirmation page
     $form['help_text'] = array(
       '#type' => 'item',
-      '#value' => '<p>'.t('The following message will be SMS Blasted to %smsnumcount numbers:<br><b>%smsmsg</b><br>Warning - SMS spam is illegal.  Please ensure that your message complies with ', array( '%smsnumcount' =>  count(preg_split('/\s*[,|\n]\s*/', $form_state['values']['smsblast_numbers'])), '%smsmsg' => $form_state['values']['smsblast_message'])) . l(t('MMA Best Practices'), 'http://www.mmaglobal.com/bestpractices.pdf') .'.</p>',
+      '#value' => '<p>' . t('The following message will be SMS Blasted to %smsnumcount numbers:<br /><b>%smsmsg</b><br />Warning - SMS spam is illegal.  Please ensure that your message complies with ', array( '%smsnumcount' =>  count(preg_split('/\s*[,|\n]\s*/', $form_state['values']['smsblast_numbers'])), '%smsmsg' => $form_state['values']['smsblast_message'])) . l(t('MMA Best Practices'), 'http://www.mmaglobal.com/bestpractices.pdf') . '.</p>',
     );
     $form['submit'] = array(
       '#value' => t('Send SMS Blast'),
@@ -220,50 +223,51 @@ function smsblast_sendform($form_state) {
 }
 
 function smsblast_sendform_submit($form, &$form_state) {
-  if (!isset($form_state['values']['send_confirmed'])) { # submitted for preview/validation
-    # validate message isn't too long
-    if (strlen($form_state['values']['smsblast_message']) > 140) {
+  if (!isset($form_state['values']['send_confirmed'])) { // submitted for preview/validation
+    // validate message isn't too long
+    if (drupal_strlen($form_state['values']['smsblast_message']) > 140) {
       drupal_set_message(t('Error - SMS message cannot be longer than 140 characters.'), 'error');
       unset($form_state['values']);
       return $form;
     }
-    $form_state['storage']['smsblast_message'] = $form_state['values']['smsblast_message']; 
-    $form_state['storage']['smsblast_numbers'] = $form_state['values']['smsblast_numbers']; 
+    $form_state['storage']['smsblast_message'] = $form_state['values']['smsblast_message'];
+    $form_state['storage']['smsblast_numbers'] = $form_state['values']['smsblast_numbers'];
     $form_state['rebuild'] = TRUE; // This is vital so the values are there
     return $form;
 
-  } else {   # submitted/confirmed for sending
+  }
+  else {   // submitted/confirmed for sending
     $themessage = $form_state['storage']['smsblast_message'] ;
     $blastid = smsblast_log_blast( $themessage, 'Send with form', '');
     foreach ( preg_split('/\s*[,|\n]\s*/', $form_state['storage']['smsblast_numbers']) as $thesmsnumber) {
-      # validate and format the SMS number
+      // validate and format the SMS number
       $thesmsnumber = smsblast_validate_phone($thesmsnumber);
       if (! $thesmsnumber) {
         smsblast_log_blastsms( $blastid, $thesmsnumber, $thenode->nid, t('Skipping SMS to %smsnum - bad SMS number', array( '%smsnum' => $thesmsnumber)));
         continue;
       }
-      # actually send the SMS
+      // actually send the SMS
       if ( sms_send($thesmsnumber, $themessage)) {
         smsblast_log_blastsms( $blastid, $thesmsnumber, $thenode->nid, t('Sent SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage )));
-      } else {
+      }
+      else {
         smsblast_log_blastsms( $blastid, $thesmsnumber, $thenode->nid, t('Error sending SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage )));
       }
     }
     watchdog('smsblast', 'Finished SMS Blast id %blastid: %smsmsg', array( '%blastid' => $blastid, '%smsmsg' => $themessage));
-    drupal_set_message(t('Finished SMS Blast to %numrecipients numbers: %smsmsg', array( '%numrecipients' => count(preg_split('/\s*[,|\n]\s*/',$form_state['storage']['smsblast_numbers'])), '%smsmsg' => $themessage)));
+    drupal_set_message(t('Finished SMS Blast to %numrecipients numbers: %smsmsg', array( '%numrecipients' => count(preg_split('/\s*[,|\n]\s*/', $form_state['storage']['smsblast_numbers'])), '%smsmsg' => $themessage)));
 
-    unset($form_state['storage']); # send user back to the start
-    return true;
+    unset($form_state['storage']); // send user back to the start
+    return TRUE;
   }
 }
-
 
 /**
  */
 function smsblast_sendview($form_state) {
   if (!module_exists('views')) {
-     drupal_set_message(t('The Views module is not installed, so you cannot use the "Send from View" feature.', 'error'));
-     return;
+    drupal_set_message(t('The Views module is not installed, so you cannot use the "Send from View" feature.', 'error'));
+    return;
   }
   if (empty($form_state['values'])) {
     $form['help_text'] = array(
@@ -271,7 +275,7 @@ function smsblast_sendview($form_state) {
       '#value' => t('Use this form to send an SMS to a list of numbers stored in nodes returned by a view.'),
     );
 
-    $all_views = views_get_all_views(); 
+    $all_views = views_get_all_views();
     $views = array();
     foreach ($all_views as $view) {
         $views[ $view->name ] = $view->name;
@@ -283,14 +287,14 @@ function smsblast_sendview($form_state) {
       '#default_value' => variable_get('smsblast_default_view', ''),
       '#description' => t('SMS Blast will go to all nodes in this View.'),
       '#options' => $views,
-    ); 
+    );
     $form['smsblast_cckfield'] = array(
       '#type' => 'select',
       '#title' => t('Select a CCK field'),
       '#default_value' => variable_get('smsblast_default_cckfield', ''),
       '#description' => t('Pick the CCK field that contains the SMS number you want to send to.  CAUTION: this field should exist for all nodes in your View!'),
       '#options' => array_combine($cck_fields, $cck_fields),
-    ); 
+    );
     $form['smsblast_message'] = array(
       '#type' => 'textfield',
       '#title' => t('SMS message'),
@@ -298,15 +302,16 @@ function smsblast_sendview($form_state) {
       '#description' => t('This message will be sent in the SMS Blast.'),
       '#size' => '140',
       '#maxlength' => '140',
-    ); 
+    );
     $form['submit'] = array(
       '#value' => t('Preview SMS Blast'),
       '#type' => 'submit',
     );
-  } else { # sendview confirmation page
+  }
+  else { # sendview confirmation page
 
     $form['submit'] = array(
-      '#prefix' => t('<p>The following message will be SMS Blasted to %smsnumcount numbers:<br><b>%smsmsg</b><br>Warning - SMS spam is illegal.  Please ensure that your message complies with ', array('%smsnumcount' =>  $form_state['storage']['smsnumcount'], '%smsmsg' => $form_state['values']['smsblast_message'])) . l(t('MMA Best Practices'), 'http://www.mmaglobal.com/bestpractices.pdf') .'.</p><br>',
+      '#prefix' => t('<p>The following message will be SMS Blasted to %smsnumcount numbers:<br /><b>%smsmsg</b><br />Warning - SMS spam is illegal.  Please ensure that your message complies with ', array('%smsnumcount' =>  $form_state['storage']['smsnumcount'], '%smsmsg' => $form_state['values']['smsblast_message'])) . l(t('MMA Best Practices'), 'http://www.mmaglobal.com/bestpractices.pdf') .'.</p><br />',
       '#value' => t('Send SMS Blast'),
       '#type' => 'submit',
     );
@@ -316,7 +321,7 @@ function smsblast_sendview($form_state) {
   }
   return $form;
 }
- 
+
 ###########
 #function smsblast_sendview_validate($form, &$form_state) {
 #}
@@ -325,18 +330,18 @@ function smsblast_sendview($form_state) {
  * Process reinstall menu form submissions.
  */
 function smsblast_sendview_submit($form, &$form_state) {
-  if (!isset($form_state['values']['send_confirmed'])) { # submitted for preview/validation
-    # validate message isn't too long
-    if (strlen($form_state['values']['smsblast_message']) > 140) {
+  if (!isset($form_state['values']['send_confirmed'])) { // submitted for preview/validation
+    // validate message isn't too long
+    if (drupal_strlen($form_state['values']['smsblast_message']) > 140) {
       drupal_set_message(t('Error - SMS message cannot be longer than 140 characters.'), 'error');
       unset($form_state['values']);
       return $form;
     }
 
-    # validate CCK field is present in each node in the view
+    // validate CCK field is present in each node in the view
     $view = views_get_view($form_state['values']['smsblast_view']);
     $view->execute();
-    $cckfieldname = 'node_data_'. $form_state['values']['smsblast_cckfield'] .'_'. $form_state['values']['smsblast_cckfield'] .'_value';
+    $cckfieldname = 'node_data_' . $form_state['values']['smsblast_cckfield'] . '_' . $form_state['values']['smsblast_cckfield'] . '_value';
     $cckerror = 0;
     foreach ($view->result as $thenode) {
       if (!isset($thenode->$cckfieldname)) {
@@ -354,13 +359,14 @@ function smsblast_sendview_submit($form, &$form_state) {
     $form_state['storage']['smsnumcount'] = count($view->result);
     return $form;
 
-  } else {   # submitted/confirmed for sending
-    $cckfieldname = 'node_data_'.$form_state['storage']['smsform_values']['smsblast_cckfield'].'_'.$form_state['storage']['smsform_values']['smsblast_cckfield'].'_value';
+  }
+  else {   // submitted/confirmed for sending
+    $cckfieldname = 'node_data_' . $form_state['storage']['smsform_values']['smsblast_cckfield'] . '_' . $form_state['storage']['smsform_values']['smsblast_cckfield'] . '_value';
 
     $themessage = $form_state['storage']['smsform_values']['smsblast_message'] ;
     $view = views_get_view($form_state['storage']['smsform_values']['smsblast_view']);
     $view->execute();
-    
+
     $blastid = smsblast_log_blast( $themessage, $view->name, $form_state['storage']['smsform_values']['smsblast_cckfield']);
     foreach ($view->result as $thenode) {
       if (!isset($thenode->$cckfieldname)) {
@@ -369,25 +375,26 @@ function smsblast_sendview_submit($form, &$form_state) {
       }
       $thesmsnumber = $thenode->$cckfieldname;
 
-      # validate and format the SMS number
+      // validate and format the SMS number
       $thesmsnumber = smsblast_validate_phone($thesmsnumber);
       if (! $thesmsnumber) {
         smsblast_log_blastsms( $blastid, $thesmsnumber, $thenode->nid, t('Skipping SMS to %smsnum - bad SMS number in field %cckfieldname', array( '%smsnum' => $thesmsnumber, '%cckfieldname' => $cckfieldname )));
         continue;
       }
 
-      # actually send the SMS
+      // actually send the SMS
       if ( sms_send($thesmsnumber, $themessage)) {
         smsblast_log_blastsms( $blastid, $thesmsnumber, $thenode->nid, t('Sent SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage )));
-      } else {
+      }
+      else {
         smsblast_log_blastsms( $blastid, $thesmsnumber, $thenode->nid, t('Error sending SMS to %smsnum: %smsmsg', array( '%smsnum' => $thesmsnumber, '%smsmsg' => $themessage )));
       }
     }
     watchdog('smsblast', 'Finished SMS Blast to %smsviewname', array( '%smsviewname' =>  $view->name, '%smsmsg' => $form_state['storage']['smsform_values']['smsblast_message'] ));
-    drupal_set_message(t('Finished SMS Blast to %smsviewname', array( '%smsviewname' =>  $view->name)), 'warning'); 
-    unset($form_state['storage']); # send user back to the start
-    return true;
-  } 
+    drupal_set_message(t('Finished SMS Blast to %smsviewname', array( '%smsviewname' =>  $view->name)), 'warning');
+    unset($form_state['storage']); // send user back to the start
+    return TRUE;
+  }
 }
 
 function smsblast_log_blast($themessage, $theview, $thefield) {
@@ -401,7 +408,7 @@ function smsblast_log_blast($themessage, $theview, $thefield) {
   drupal_write_record($table, $data);
   $blastid = db_last_insert_id($table, 'blastid');
   watchdog('smsblast', 'Sending SMS Blast to %smsviewname: %smsmsg', array( '%smsviewname' =>  $theview, '%smsmsg' => $themessage ));
-  return($blastid);
+  return ($blastid);
 }
 
 function smsblast_log_blastsms( $blastid, $thesmsnumber, $thenodeid, $thestatus) {
@@ -414,16 +421,17 @@ function smsblast_log_blastsms( $blastid, $thesmsnumber, $thenodeid, $thestatus)
   );
   drupal_write_record($table, $data);
   watchdog('smsblast', $thestatus);
-  return true;
+  return TRUE;
 }
 
 function smsblast_validate_phone($phone_raw) {
   $phone = 0;
-  # phone numbers missing the 1 prefix
+  // phone numbers missing the 1 prefix
   if (preg_match('/^1\d{10}$/', $phone_raw, $matches)) {
-    $phone = '1'.$matches[0];
-  # phone numbers with the 1 prefix
-  } else if (preg_match('/^\d{10}$/', $phone_raw, $matches)) {
+    $phone = '1' . $matches[0];
+  // phone numbers with the 1 prefix
+  }
+  elseif (preg_match('/^\d{10}$/', $phone_raw, $matches)) {
     $phone = $matches[0];
   }
   return $phone;
