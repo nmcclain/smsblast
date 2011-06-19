@@ -117,10 +117,11 @@ function smsblast_admin_settings() {
 
 function smsblast_overview() {
   $output = '';
-  $output .= t('XXX Here is some friendly help text and info about the SMS Blast module.');
+  $output .= t('XXX needs work: right now it just prints README.txt');
   if (!module_exists('views')) {
     drupal_set_message(t('The Views module is not installed, so you cannot use the "Send from View" feature. Don\'t worry, you can still use the "Send with form" feature.<br>If you want to be able to send SMS Blasts to numbers that are stored in node CCK fields, you\'ll need to install and enable the Views module.'));
   }
+  $output .= '<pre>'.`cat sites/all/modules/smsblast/README.txt`.'</pre>';
   return $output;
 }
 function smsblast_history() {

@@ -12,6 +12,7 @@ CONTENTS OF THIS FILE
  * Introduction
  * Installation
  * Todos: stuff I want to fix before publishing to d.o
+ * Todos: roadmap ideas for the future
 
 
 INTRODUCTION
@@ -51,13 +52,17 @@ INSTALLATION
 2. XXX
 
 
-TODOS: STUFF i WANT TO FIX BEFORE PUBLISHING TO D.O:
+TODOS: STUFF I WANT TO FIX BEFORE PUBLISHING AS A REAL MODULE D.O
 -----------------------------------------
 
-  - Lots of todos are marked with "XXX"
-  - Rules integration - send blast as a Rules event AND action
-  - Fix history for "send with form"  
+  - Fix history for "send with form" - this is TOTALLY BROKEN right now!!!
   - Improve documentation and overview page - esp. for "Send with Views"
+
+
+TODOS: ROADMAP IDEAS FOR THE FUTURE
+-----------------------------------------
+
+  - Rules integration - send blast as a Rules event AND action
   - De-dupe numbers (?)
 
 
